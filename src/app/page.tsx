@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function Home() {
   return (
     <div className="flex flex-col flex-1">
@@ -16,13 +18,16 @@ export default function Home() {
           </section>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            <Link
+              href="/players"
+              className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow cursor-pointer"
+            >
               <h3 className="font-semibold text-[color:var(--color-court-blue)] mb-2">Player Directory</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                 Browse and search volleyball players with detailed stats
               </p>
               <div className="h-2 w-full bg-[color:var(--color-spike-gold)] rounded opacity-30"></div>
-            </div>
+            </Link>
             
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold text-[color:var(--color-court-blue)] mb-2">Head-to-Head</h3>
