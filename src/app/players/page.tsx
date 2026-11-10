@@ -1,22 +1,47 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useMemo } from 'react'
-import { mockPlayers } from '@/data/mockPlayers'
+import { useState, useEffect, useMemo } from 'react'
+import { getPlayers } from '@/lib/supabase/queries'
 import type { Player, Position } from '@/types/database'
+import { mockPlayers } from '@/data/mockPlayers'
 
 type SortOption = 'name-asc' | 'spike-desc' | 'kill-desc'
 
 export default function PlayersPage() {
+  const [players, setPlayers] = useState<Player[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPosition, setSelectedPosition] = useState<Position | null>(null)
   const [sortBy, setSortBy] = useState<SortOption>('name-asc')
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
 
+  useEffect(() => {
+    const fetchPlayers = async () => {
+      try {
+        const data = await getPlayers()
+        if (data.length > 0) {
+          setPlayers(data)
+        } else {
+          // Fallback to mock data if database is empty
+          setPlayers(mockPlayers)
+        }
+      } catch (err) {
+        console.error('Error fetching players:', err)
+        setError('Failed to load players. Using mock data.')
+        setPlayers(mockPlayers)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPlayers()
+  }, [])
+
   const positions: Position[] = ['Setter', 'Libero', 'Outside Hitter', 'Middle Blocker', 'Opposite']
 
   const filteredPlayers = useMemo(() => {
-    let result = mockPlayers
+    let result = players
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -42,7 +67,7 @@ export default function PlayersPage() {
     }
 
     return result
-  }, [searchQuery, selectedPosition, sortBy])
+  }, [players, searchQuery, selectedPosition, sortBy])
 
   const toggleFavorite = (e: React.MouseEvent, playerId: string) => {
     e.preventDefault()
@@ -54,13 +79,30 @@ export default function PlayersPage() {
       newFavorites.add(playerId)
     }
     setFavorites(newFavorites)
+    localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)))
   }
 
   const isFavorite = (playerId: string) => favorites.has(playerId)
 
+  if (loading) {
+    return (
+      <main className="flex-1 p-4 md:p-8">
+        <div className="text-center py-8">
+          <p className="text-gray-600 dark:text-gray-400">Loading players...</p>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="flex-1 p-4 md:p-8">
       <div className="max-w-6xl mx-auto w-full">
+        {error && (
+          <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 p-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+
         <div className="mb-6">
           <h2 className="text-lg font-semibold mb-4">Find Players</h2>
             
@@ -121,7 +163,7 @@ export default function PlayersPage() {
           </div>
 
           <div className="mb-4 text-sm text-gray-600 dark:text-gray-300">
-            Showing {filteredPlayers.length} of {mockPlayers.length} players
+            Showing {filteredPlayers.length} of {players.length} players
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -184,5 +226,5 @@ export default function PlayersPage() {
           )}
         </div>
       </main>
-  )
+    )
 }

@@ -1,17 +1,47 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { notFound } from 'next/navigation'
+import { getPlayerById } from '@/lib/supabase/queries'
 import { mockPlayers } from '@/data/mockPlayers'
 import type { Player } from '@/types/database'
 
 export default function PlayerDetailPage({ params }: { params: { id: string } }) {
-  const player = mockPlayers.find(p => p.id === params.id)
+  const [player, setPlayer] = useState<Player | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!player) {
-    notFound()
-  }
+  useEffect(() => {
+    const fetchPlayer = async () => {
+      try {
+        const data = await getPlayerById(params.id)
+        if (data) {
+          setPlayer(data)
+        } else {
+          // Fallback to mock data
+          const mockPlayer = mockPlayers.find(p => p.id === params.id)
+          if (mockPlayer) {
+            setPlayer(mockPlayer)
+          } else {
+            notFound()
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching player:', err)
+        setError('Failed to load player. Using mock data.')
+        const mockPlayer = mockPlayers.find(p => p.id === params.id)
+        if (mockPlayer) {
+          setPlayer(mockPlayer)
+        } else {
+          notFound()
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPlayer()
+  }, [params.id])
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['bio']))
 
@@ -27,9 +57,29 @@ export default function PlayerDetailPage({ params }: { params: { id: string } })
 
   const isExpanded = (section: string) => expandedSections.has(section)
 
+  if (loading) {
+    return (
+      <main className="flex-1 p-4 md:p-8">
+        <div className="text-center py-8">
+          <p className="text-gray-600 dark:text-gray-400">Loading player...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (!player) {
+    notFound()
+  }
+
   return (
     <main className="flex-1 p-4 md:p-8">
       <div className="max-w-4xl mx-auto w-full">
+        {error && (
+          <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 p-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-8">

@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Spike Hub - Volleyball Fan Project
 
-## Getting Started
+A comprehensive volleyball fan application for player stats, comparisons, and custom lineup building.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+### 5 Core Views
+- **Home Dashboard** - Landing page with Daily Fun Fact
+- **Player Directory** - Searchable/filterable player list
+- **Player Detail** - Individual player profiles with expandable sections
+- **Head-to-Head Comparison** - Side-by-side player comparison
+- **Lineup Builder** - Create and save custom 6-player rotations
+
+### 10 Custom Features
+1. Search Bar
+2. Category Filters (Position)
+3. Sorting Options
+4. Favorites Button
+5. Dark/Light Mode
+6. Comparison Tool
+7. Personal Notes
+8. Expandable Information Sections
+9. Daily Fun Fact
+10. CSV Export
+
+## Tech Stack
+- **Frontend:** Next.js 16 (App Router), React, TypeScript, Tailwind CSS
+- **Backend:** Supabase (PostgreSQL, Authentication)
+- **Deployment:** Vercel
+
+## Setup Instructions
+
+### 1. Create Supabase Project
+1. Go to [Supabase](https://app.supabase.com/) and create a new project
+2. Note your Project URL and Anon Key from Settings > API
+
+### 2. Run Database Schema
+1. Go to your Supabase project > SQL Editor
+2. Run the schema from `database/schema.sql`
+3. This creates tables and seeds 8 volleyball players
+
+### 3. Configure Environment Variables
+Create a `.env.local` file in the root:
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Install Dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 5. Run Development Server
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000)
 
-## Learn More
+### 6. Deploy to Vercel
+1. Push to GitHub
+2. Go to [Vercel](https://vercel.com/) and import your repository
+3. Add environment variables in Vercel dashboard
+4. Deploy!
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/
+│   ├── compare/          # Head-to-Head Comparison (View 4)
+│   ├── lineup-builder/   # Custom Lineup Builder (View 5)
+│   ├── login/            # Authentication
+│   ├── signup/           # Authentication
+│   ├── players/
+│   │   └── [id]/         # Player Detail (View 3)
+│   ├── globals.css       # Theme colors
+│   ├── layout.tsx        # Root layout with providers
+│   └── page.tsx          # Home Dashboard (View 1)
+├── components/
+│   ├── DailyFunFact.tsx  # Feature #33
+│   └── Navbar.tsx        # Navigation with theme toggle
+├── context/
+│   ├── AuthContext.tsx   # Supabase Authentication
+│   └── ThemeContext.tsx  # Dark/Light Mode (Feature #9)
+├── data/
+│   └── mockPlayers.ts    # Development mock data
+├── lib/
+│   └── supabase/
+│       └── client.ts     # Supabase client
+└── types/
+    └── database.ts      # TypeScript types
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+database/
+└── schema.sql           # Supabase database schema
+```
 
-## Deploy on Vercel
+## Database Schema
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The database includes:
+- **players** table: Read-only volleyball player data
+- **lineups** table: User-created lineups with 6 players
+- **Row Level Security:** Users can only access their own lineups
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See `database/schema.sql` for full schema.
+
+## Authentication
+
+- Sign Up: `/signup`
+- Sign In: `/login`
+- Sign Out: Available in navbar when logged in
+- Protected Routes: Lineup Builder requires authentication
+
+## Color Theme
+
+- **Court Blue:** #0F4C81
+- **Spike Gold:** #FFB800
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Push and create a pull request
+
+## License
+
+MIT

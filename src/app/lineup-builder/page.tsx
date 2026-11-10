@@ -1,32 +1,60 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
+import { getPlayers, getLineups, createLineup, deleteLineup } from '@/lib/supabase/queries'
 import { mockPlayers } from '@/data/mockPlayers'
-import type { Player } from '@/types/database'
-
-interface Lineup {
-  id: string
-  name: string
-  playerIds: string[]
-  tacticalNotes: string
-}
+import type { Player, Lineup } from '@/types/database'
 
 export default function LineupBuilderPage() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const [players, setPlayers] = useState<Player[]>([])
   const [lineupName, setLineupName] = useState('')
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([])
   const [tacticalNotes, setTacticalNotes] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [savedLineups, setSavedLineups] = useState<Lineup[]>([])
   const [showPlayerModal, setShowPlayerModal] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const saved = localStorage.getItem('lineups')
-    if (saved) {
-      setSavedLineups(JSON.parse(saved))
+    if (!user) {
+      router.push('/login')
+      return
     }
-  }, [])
+    fetchData()
+  }, [user, router])
 
-  const filteredPlayers = mockPlayers.filter(
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      
+      // Fetch players
+      const playerData = await getPlayers()
+      if (playerData.length > 0) {
+        setPlayers(playerData)
+      } else {
+        setPlayers(mockPlayers)
+      }
+
+      // Fetch lineups for current user
+      if (user) {
+        const lineupData = await getLineups(user.id)
+        setSavedLineups(lineupData)
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err)
+      setError('Failed to load data. Using mock data.')
+      setPlayers(mockPlayers)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredPlayers = players.filter(
     p => !selectedPlayers.some(sp => sp.id === p.id) && 
     (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
      p.team.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -44,39 +72,59 @@ export default function LineupBuilderPage() {
     setSelectedPlayers(selectedPlayers.filter(p => p.id !== playerId))
   }
 
-  const saveLineup = () => {
-    if (!lineupName || selectedPlayers.length !== 6) return
-
-    const newLineup: Lineup = {
-      id: Date.now().toString(),
-      name: lineupName,
-      playerIds: selectedPlayers.map(p => p.id),
-      tacticalNotes
+  const saveLineup = async () => {
+    if (!lineupName || selectedPlayers.length !== 6) {
+      setError('Please provide a lineup name and select exactly 6 players')
+      return
     }
 
-    const updatedLineups = [...savedLineups, newLineup]
-    setSavedLineups(updatedLineups)
-    localStorage.setItem('lineups', JSON.stringify(updatedLineups))
-    
-    setLineupName('')
-    setSelectedPlayers([])
-    setTacticalNotes('')
+    if (!user) {
+      setError('You must be logged in to save lineups')
+      return
+    }
+
+    try {
+      const newLineup: Omit<Lineup, 'id' | 'created_at' | 'updated_at'> = {
+        user_id: user.id,
+        lineup_name: lineupName,
+        player_ids: selectedPlayers.map(p => p.id),
+        tactical_notes: tacticalNotes
+      }
+
+      const created = await createLineup(newLineup)
+      if (created) {
+        setSavedLineups([...savedLineups, created])
+        setLineupName('')
+        setSelectedPlayers([])
+        setTacticalNotes('')
+        setError(null)
+      }
+    } catch (err) {
+      console.error('Error saving lineup:', err)
+      setError('Failed to save lineup')
+    }
   }
 
-  const deleteLineup = (id: string) => {
-    const updatedLineups = savedLineups.filter(l => l.id !== id)
-    setSavedLineups(updatedLineups)
-    localStorage.setItem('lineups', JSON.stringify(updatedLineups))
+  const handleDeleteLineup = async (id: string) => {
+    try {
+      const success = await deleteLineup(id)
+      if (success) {
+        setSavedLineups(savedLineups.filter(l => l.id !== id))
+      }
+    } catch (err) {
+      console.error('Error deleting lineup:', err)
+      setError('Failed to delete lineup')
+    }
   }
 
   const exportToCSV = (lineup: Lineup) => {
-    const players = mockPlayers.filter(p => lineup.playerIds.includes(p.id))
+    const lineupPlayers = players.filter(p => lineup.player_ids.includes(p.id))
     const csvContent = [
-      ['Lineup Name:', lineup.name],
-      ['Tactical Notes:', lineup.tacticalNotes],
+      ['Lineup Name:', lineup.lineup_name],
+      ['Tactical Notes:', lineup.tactical_notes || ''],
       [],
       ['Player Name', 'Position', 'Team', 'Spike Reach (cm)', 'Kill %'],
-      ...players.map(p => [
+      ...lineupPlayers.map(p => [
         p.name,
         p.position,
         p.team,
@@ -89,7 +137,7 @@ export default function LineupBuilderPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${lineup.name.replace(/\s+/g, '_')}_lineup.csv`
+    link.download = `${lineup.lineup_name.replace(/\s+/g, '_')}_lineup.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -98,12 +146,32 @@ export default function LineupBuilderPage() {
 
   const positions = ['Setter', 'Libero', 'Outside Hitter', 'Middle Blocker', 'Opposite']
 
+  if (loading) {
+    return (
+      <main className="flex-1 p-4 md:p-8">
+        <div className="text-center py-8">
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </main>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
   return (
     <main className="flex-1 p-4 md:p-8">
       <div className="max-w-6xl mx-auto w-full">
         <h1 className="text-2xl font-bold mb-6 text-[color:var(--color-court-blue)]">
           Custom Lineup Builder (View 5)
         </h1>
+
+        {error && (
+          <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
@@ -194,19 +262,19 @@ export default function LineupBuilderPage() {
                 <text x="150" y="20" textAnchor="middle" className="text-xs fill-gray-600">Net</text>
                 
                 {selectedPlayers.map((player, index) => {
-                  const positions = [
-                    { x: 150, y: 30, label: 'Position 1' },
-                    { x: 250, y: 75, label: 'Position 2' },
-                    { x: 150, y: 120, label: 'Position 3' },
-                    { x: 50, y: 75, label: 'Position 4' },
-                    { x: 150, y: 60, label: 'Position 5' },
-                    { x: 100, y: 100, label: 'Position 6' }
+                  const courtPositions = [
+                    { x: 150, y: 30 },
+                    { x: 250, y: 75 },
+                    { x: 150, y: 120 },
+                    { x: 50, y: 75 },
+                    { x: 150, y: 60 },
+                    { x: 100, y: 100 }
                   ]
-                  const pos = positions[index]
+                  const pos = courtPositions[index]
                   return (
                     <g key={player.id}>
                       <circle cx={pos.x} cy={pos.y} r="15" fill="#0F4C81" />
-                      <text x={pos.x} y={pos.y + 5} textAnchor="middle" className="text-xs fill-white" >
+                      <text x={pos.x} y={pos.y + 5} textAnchor="middle" className="text-xs fill-white">
                         {player.position[0]}
                       </text>
                     </g>
@@ -265,14 +333,14 @@ export default function LineupBuilderPage() {
 
         <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4 text-[color:var(--color-court-blue)]">
-            Saved Lineups
+            Your Saved Lineups
           </h2>
           {savedLineups.length === 0 ? (
             <p className="text-gray-500 dark:text-gray-400">No lineups saved yet.</p>
           ) : (
             <div className="space-y-4">
               {savedLineups.map(lineup => {
-                const players = mockPlayers.filter(p => lineup.playerIds.includes(p.id))
+                const lineupPlayers = players.filter(p => lineup.player_ids.includes(p.id))
                 return (
                   <div
                     key={lineup.id}
@@ -280,11 +348,11 @@ export default function LineupBuilderPage() {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="font-semibold">{lineup.name}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{players.length} players</p>
+                        <h3 className="font-semibold">{lineup.lineup_name}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{lineupPlayers.length} players</p>
                       </div>
                       <button
-                        onClick={() => deleteLineup(lineup.id)}
+                        onClick={() => handleDeleteLineup(lineup.id)}
                         className="text-red-500 hover:text-red-700"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,11 +360,11 @@ export default function LineupBuilderPage() {
                         </svg>
                       </button>
                     </div>
-                    {lineup.tacticalNotes && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{lineup.tacticalNotes}</p>
+                    {lineup.tactical_notes && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{lineup.tactical_notes}</p>
                     )}
                     <div className="flex flex-wrap gap-2 mb-3">
-                      {players.map(p => (
+                      {lineupPlayers.map(p => (
                         <span
                           key={p.id}
                           className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs"

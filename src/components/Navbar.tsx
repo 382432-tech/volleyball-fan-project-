@@ -2,9 +2,11 @@
 
 import Link from 'next/link'
 import { useTheme } from '@/context/ThemeContext'
+import { useAuth } from '@/context/AuthContext'
 
 export default function Navbar() {
   const { theme, toggleTheme } = useTheme()
+  const { user, signOut } = useAuth()
 
   return (
     <header className="bg-[color:var(--color-court-blue)] text-white p-4 flex justify-between items-center">
@@ -15,6 +17,11 @@ export default function Navbar() {
       
       <nav className="flex items-center gap-4">
         <Link href="/players" className="hover:opacity-90 transition-opacity">Players</Link>
+        <Link href="/compare" className="hover:opacity-90 transition-opacity">Compare</Link>
+        {user && (
+          <Link href="/lineup-builder" className="hover:opacity-90 transition-opacity">Lineup Builder</Link>
+        )}
+        
         <button
           onClick={toggleTheme}
           className="flex items-center gap-2 hover:opacity-90 transition-opacity"
@@ -29,10 +36,26 @@ export default function Navbar() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
           )}
-          <span className="text-sm">
-            {theme === 'light' ? 'Dark' : 'Light'} Mode (Feature #9)
-          </span>
         </button>
+        
+        {user ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{user.email}</span>
+            <button
+              onClick={signOut}
+              className="px-3 py-1 bg-white/20 rounded hover:bg-white/30 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <Link
+            href="/login"
+            className="px-3 py-1 bg-white/20 rounded hover:bg-white/30 transition-colors"
+          >
+            Sign In
+          </Link>
+        )}
       </nav>
     </header>
   )
