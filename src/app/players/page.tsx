@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useMemo } from 'react'
 import { mockPlayers } from '@/data/mockPlayers'
 import type { Player, Position } from '@/types/database'
@@ -43,7 +44,9 @@ export default function PlayersPage() {
     return result
   }, [searchQuery, selectedPosition, sortBy])
 
-  const toggleFavorite = (playerId: string) => {
+  const toggleFavorite = (e: React.MouseEvent, playerId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
     const newFavorites = new Set(favorites)
     if (newFavorites.has(playerId)) {
       newFavorites.delete(playerId)
@@ -128,9 +131,10 @@ export default function PlayersPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredPlayers.map(player => (
-              <div
+              <Link
                 key={player.id}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+                href={`/players/${player.id}`}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
               >
                 <div className="relative h-48 bg-gray-100 dark:bg-gray-700">
                   <img
@@ -139,7 +143,7 @@ export default function PlayersPage() {
                     className="w-full h-full object-cover"
                   />
                   <button
-                    onClick={() => toggleFavorite(player.id)}
+                    onClick={(e) => toggleFavorite(e, player.id)}
                     className="absolute top-2 right-2 bg-white/80 dark:bg-black/50 rounded-full p-1.5 hover:bg-white"
                     title={isFavorite(player.id) ? 'Remove from favorites' : 'Add to favorites'}
                   >
@@ -174,7 +178,7 @@ export default function PlayersPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
