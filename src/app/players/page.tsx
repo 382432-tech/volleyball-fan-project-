@@ -59,15 +59,10 @@ export default function PlayersPage() {
   const isFavorite = (playerId: string) => favorites.has(playerId)
 
   return (
-    <div className="flex flex-col flex-1">
-      <header className="bg-[color:var(--color-court-blue)] text-white p-4">
-        <h1 className="text-xl font-bold">Player Directory</h1>
-      </header>
-
-      <main className="flex-1 p-4 md:p-8">
-        <div className="max-w-6xl mx-auto w-full">
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-4">Find Players</h2>
+    <main className="flex-1 p-4 md:p-8">
+      <div className="max-w-6xl mx-auto w-full">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-4">Find Players</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="md:col-span-2">
@@ -189,6 +184,5 @@ export default function PlayersPage() {
           )}
         </div>
       </main>
-    </div>
   )
 }
