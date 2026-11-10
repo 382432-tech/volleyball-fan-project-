@@ -3,18 +3,19 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { toast } from '@/components/Toast'
 import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const { user, signIn } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (user) {
+      toast('Welcome back!', 'success')
       router.push('/')
     }
   }, [user, router])
@@ -22,10 +23,15 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError(null)
 
     if (!email || !password) {
-      setError('Please enter both email and password')
+      toast('Please enter both email and password', 'error')
+      setLoading(false)
+      return
+    }
+
+    if (!email.includes('@')) {
+      toast('Please enter a valid email address', 'error')
       setLoading(false)
       return
     }
@@ -33,8 +39,9 @@ export default function LoginPage() {
     const { error } = await signIn(email, password)
     
     if (error) {
-      setError(error.message)
+      toast(error.message, 'error')
     } else {
+      toast('Successfully signed in!', 'success')
       router.push('/')
     }
     setLoading(false)
@@ -47,12 +54,6 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-center mb-6 text-[color:var(--color-court-blue)]">
             Sign In to Spike Hub
           </h1>
-
-          {error && (
-            <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded-lg mb-4">
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -79,6 +80,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-spike-gold)]"
               />
             </div>

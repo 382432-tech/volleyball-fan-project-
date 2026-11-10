@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { toast } from '@/components/Toast'
 import { getPlayers, getLineups, createLineup, deleteLineup } from '@/lib/supabase/queries'
 import { mockPlayers } from '@/data/mockPlayers'
 import type { Player, Lineup } from '@/types/database'
@@ -74,12 +75,13 @@ export default function LineupBuilderPage() {
 
   const saveLineup = async () => {
     if (!lineupName || selectedPlayers.length !== 6) {
-      setError('Please provide a lineup name and select exactly 6 players')
+      toast('Please provide a lineup name and select exactly 6 players', 'error')
       return
     }
 
     if (!user) {
-      setError('You must be logged in to save lineups')
+      toast('You must be logged in to save lineups', 'error')
+      router.push('/login')
       return
     }
 
@@ -98,10 +100,11 @@ export default function LineupBuilderPage() {
         setSelectedPlayers([])
         setTacticalNotes('')
         setError(null)
+        toast('Lineup saved successfully!', 'success')
       }
     } catch (err) {
       console.error('Error saving lineup:', err)
-      setError('Failed to save lineup')
+      toast('Failed to save lineup. Please try again.', 'error')
     }
   }
 
@@ -110,10 +113,11 @@ export default function LineupBuilderPage() {
       const success = await deleteLineup(id)
       if (success) {
         setSavedLineups(savedLineups.filter(l => l.id !== id))
+        toast('Lineup deleted successfully', 'success')
       }
     } catch (err) {
       console.error('Error deleting lineup:', err)
-      setError('Failed to delete lineup')
+      toast('Failed to delete lineup. Please try again.', 'error')
     }
   }
 

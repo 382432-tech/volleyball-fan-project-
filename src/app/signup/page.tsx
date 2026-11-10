@@ -3,19 +3,20 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { toast } from '@/components/Toast'
 import Link from 'next/link'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const { user, signUp } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (user) {
+      toast('Account created successfully!', 'success')
       router.push('/')
     }
   }, [user, router])
@@ -23,22 +24,28 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setError(null)
 
+    // Validation
     if (!email || !password || !confirmPassword) {
-      setError('Please fill in all fields')
+      toast('Please fill in all fields', 'error')
+      setLoading(false)
+      return
+    }
+
+    if (!email.includes('@')) {
+      toast('Please enter a valid email address', 'error')
       setLoading(false)
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      toast('Passwords do not match', 'error')
       setLoading(false)
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+      toast('Password must be at least 6 characters', 'error')
       setLoading(false)
       return
     }
@@ -46,10 +53,12 @@ export default function SignupPage() {
     const { error } = await signUp(email, password)
     
     if (error) {
-      setError(error.message)
+      toast(error.message, 'error')
     } else {
-      // Supabase sends a confirmation email, but for development we can redirect
-      router.push('/')
+      toast('Account created! Please check your email for verification.', 'success')
+      // Note: Supabase may send verification email
+      // For development, we redirect immediately
+      setTimeout(() => router.push('/'), 2000)
     }
     setLoading(false)
   }
@@ -61,12 +70,6 @@ export default function SignupPage() {
           <h1 className="text-2xl font-bold text-center mb-6 text-[color:var(--color-court-blue)]">
             Create Account
           </h1>
-
-          {error && (
-            <div className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-3 rounded-lg mb-4">
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

@@ -19,7 +19,10 @@ export default function Navbar() {
         <Link href="/players" className="hover:opacity-90 transition-opacity">Players</Link>
         <Link href="/compare" className="hover:opacity-90 transition-opacity">Compare</Link>
         {user && (
-          <Link href="/lineup-builder" className="hover:opacity-90 transition-opacity">Lineup Builder</Link>
+          <>
+            <Link href="/lineup-builder" className="hover:opacity-90 transition-opacity">Lineup Builder</Link>
+            <Link href="/profile" className="hover:opacity-90 transition-opacity">Profile</Link>
+          </>
         )}
         
         <button
