@@ -1,8 +1,37 @@
 import { supabase } from './client'
+import { mockPlayers } from '@/data/mockPlayers'
 import type { Player, Lineup } from '@/types/database'
+
+const MOCK_LINEUPS_KEY = 'spike_hub_mock_lineups'
+let memoryLineups: Lineup[] = []
+
+function readMockLineups(): Lineup[] {
+  if (typeof window === 'undefined') return memoryLineups
+  try {
+    const raw = window.localStorage.getItem(MOCK_LINEUPS_KEY)
+    return raw ? (JSON.parse(raw) as Lineup[]) : memoryLineups
+  } catch {
+    return memoryLineups
+  }
+}
+
+function writeMockLineups(lineups: Lineup[]) {
+  memoryLineups = lineups
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(MOCK_LINEUPS_KEY, JSON.stringify(lineups))
+    } catch {
+      // Ignore storage quota errors
+    }
+  }
+}
 
 // Fetch all players
 export async function getPlayers(): Promise<Player[]> {
+  if (!supabase) {
+    return [...mockPlayers].sort((a, b) => a.name.localeCompare(b.name))
+  }
+
   const { data, error } = await supabase
     .from('players')
     .select('*')
@@ -17,6 +46,10 @@ export async function getPlayers(): Promise<Player[]> {
 
 // Fetch a single player by ID
 export async function getPlayerById(id: string): Promise<Player | null> {
+  if (!supabase) {
+    return mockPlayers.find(p => p.id === id) ?? null
+  }
+
   const { data, error } = await supabase
     .from('players')
     .select('*')
@@ -32,6 +65,12 @@ export async function getPlayerById(id: string): Promise<Player | null> {
 
 // Fetch lineups for current user
 export async function getLineups(userId: string): Promise<Lineup[]> {
+  if (!supabase) {
+    return readMockLineups()
+      .filter(l => l.user_id === userId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }
+
   const { data, error } = await supabase
     .from('lineups')
     .select('*')
@@ -47,6 +86,19 @@ export async function getLineups(userId: string): Promise<Lineup[]> {
 
 // Create a new lineup
 export async function createLineup(lineup: Omit<Lineup, 'id' | 'created_at' | 'updated_at'>): Promise<Lineup | null> {
+  if (!supabase) {
+    const now = new Date().toISOString()
+    const created: Lineup = {
+      ...lineup,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `lineup-${Date.now()}`,
+      created_at: now,
+      updated_at: now,
+    }
+    const existing = readMockLineups()
+    writeMockLineups([created, ...existing])
+    return created
+  }
+
   const { data, error } = await supabase
     .from('lineups')
     .insert([lineup])
@@ -62,6 +114,20 @@ export async function createLineup(lineup: Omit<Lineup, 'id' | 'created_at' | 'u
 
 // Update a lineup
 export async function updateLineup(id: string, updates: Partial<Lineup>): Promise<Lineup | null> {
+  if (!supabase) {
+    const existing = readMockLineups()
+    const index = existing.findIndex(l => l.id === id)
+    if (index === -1) return null
+    const updated: Lineup = {
+      ...existing[index],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    }
+    existing[index] = updated
+    writeMockLineups(existing)
+    return updated
+  }
+
   const { data, error } = await supabase
     .from('lineups')
     .update(updates)
@@ -78,6 +144,12 @@ export async function updateLineup(id: string, updates: Partial<Lineup>): Promis
 
 // Delete a lineup
 export async function deleteLineup(id: string): Promise<boolean> {
+  if (!supabase) {
+    const existing = readMockLineups()
+    writeMockLineups(existing.filter(l => l.id !== id))
+    return true
+  }
+
   const { error } = await supabase
     .from('lineups')
     .delete()
@@ -89,3 +161,4 @@ export async function deleteLineup(id: string): Promise<boolean> {
   }
   return true
 }
+

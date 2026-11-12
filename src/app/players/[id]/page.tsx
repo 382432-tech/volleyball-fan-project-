@@ -2,46 +2,47 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { notFound } from 'next/navigation'
+import { notFound, useParams } from 'next/navigation'
 import { getPlayerById } from '@/lib/supabase/queries'
 import { mockPlayers } from '@/data/mockPlayers'
 import type { Player } from '@/types/database'
 
-export default function PlayerDetailPage({ params }: { params: { id: string } }) {
+export default function PlayerDetailPage() {
+  const params = useParams<{ id: string }>()
+  const playerId = params?.id
   const [player, setPlayer] = useState<Player | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchPlayer = async () => {
+      if (!playerId) {
+        setLoading(false)
+        return
+      }
       try {
-        const data = await getPlayerById(params.id)
+        const data = await getPlayerById(playerId)
         if (data) {
           setPlayer(data)
         } else {
-          // Fallback to mock data
-          const mockPlayer = mockPlayers.find(p => p.id === params.id)
+          const mockPlayer = mockPlayers.find(p => p.id === playerId)
           if (mockPlayer) {
             setPlayer(mockPlayer)
-          } else {
-            notFound()
           }
         }
       } catch (err) {
         console.error('Error fetching player:', err)
         setError('Failed to load player. Using mock data.')
-        const mockPlayer = mockPlayers.find(p => p.id === params.id)
+        const mockPlayer = mockPlayers.find(p => p.id === playerId)
         if (mockPlayer) {
           setPlayer(mockPlayer)
-        } else {
-          notFound()
         }
       } finally {
         setLoading(false)
       }
     }
     fetchPlayer()
-  }, [params.id])
+  }, [playerId])
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['bio']))
 
